@@ -15,7 +15,7 @@ payload = json.dumps({
         "value": "database",
         "property": "object"
     }
-}).encode()
+}).encode("utf-8")
 
 request = urllib.request.Request(
     url,
@@ -30,25 +30,18 @@ request = urllib.request.Request(
 
 try:
     with urllib.request.urlopen(request) as response:
-        result = json.loads(response.read().decode())
+        result = json.loads(response.read().decode("utf-8"))
 
     print("=" * 60)
-
-    for db in result["results"]:
-        title = ""
-
-        if db["title"]:
-            title = "".join(
-                t["plain_text"]
-                for t in db["title"]
-            )
-
-        print(title)
-        print(db["id"])
-        print("-" * 40)
-
+    print("Atlas Notion Search Result")
+    print("=" * 60)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
     print("=" * 60)
 
 except Exception as e:
-    print(e)
+    print("=" * 60)
+    print("ERROR")
+    print("=" * 60)
+    print(type(e).__name__)
+    print(str(e))
     sys.exit(1)
