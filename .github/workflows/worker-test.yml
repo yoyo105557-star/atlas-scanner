@@ -1,0 +1,39 @@
+name: Atlas Worker Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-worker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send test candidate
+        env:
+          ATLAS_WORKER_URL: ${{ secrets.ATLAS_WORKER_URL }}
+          ATLAS_API_KEY: ${{ secrets.ATLAS_API_KEY }}
+        run: |
+          curl --fail-with-body \
+            --request POST \
+            --url "$ATLAS_WORKER_URL" \
+            --header "content-type: application/json" \
+            --header "x-atlas-key: $ATLAS_API_KEY" \
+            --data '{
+              "symbol": "ATLAS_API_TEST",
+              "status": "Watching",
+              "price": 1,
+              "change_24h": 0,
+              "volume_24h": 1000000,
+              "funding": 0,
+              "atlas_score": 50,
+              "structure_1h": "Neutral",
+              "structure_4h": "Neutral",
+              "sector": "Test",
+              "market_risk": "測試",
+              "entry_zone": "",
+              "invalid_condition": ["測試資料"],
+              "passed_conditions": ["Worker 已收到 JSON"],
+              "pending_conditions": ["確認 Notion 寫入"],
+              "ai_observation": "Atlas Worker 與 Notion API 串接測試",
+              "updated_at": "2026-07-12T08:30:00Z"
+            }'
