@@ -1,62 +1,54 @@
 import json
 import os
 import sys
-import urllib.error
 import urllib.request
 
-
 NOTION_TOKEN = os.environ.get("NOTION_TOKEN")
-DATA_SOURCE_ID = os.environ.get("NOTION_DATA_SOURCE_ID")
 
+if not NOTION_TOKEN:
+    raise RuntimeError("Missing NOTION_TOKEN")
 
-def main() -> None:
-    if not NOTION_TOKEN:
-        raise RuntimeError("Missing NOTION_TOKEN")
+url = "https://api.notion.com/v1/search"
 
-    if not DATA_SOURCE_ID:
-        raise RuntimeError("Missing NOTION_DATA_SOURCE_ID")
+payload = json.dumps({
+    "filter": {
+        "value": "database",
+        "property": "object"
+    }
+}).encode()
 
-    url = f"https://api.notion.com/v1/databases/{DATA_SOURCE_ID}"
+request = urllib.request.Request(
+    url,
+    data=payload,
+    headers={
+        "Authorization": f"Bearer {NOTION_TOKEN}",
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+    },
+    method="POST",
+)
 
-    request = urllib.request.Request(
-        url,
-        headers={
-            "Authorization": f"Bearer {NOTION_TOKEN}",
-            "Notion-Version": "2026-03-11",
-            "Content-Type": "application/json",
-        },
-        method="GET",
-    )
+try:
+    with urllib.request.urlopen(request) as response:
+        result = json.loads(response.read().decode())
 
-    try:
-        with urllib.request.urlopen(request, timeout=30) as response:
-            result = json.loads(response.read().decode("utf-8"))
+    print("=" * 60)
 
-        title = result.get("title", [])
-        title_text = "".join(
-            item.get("plain_text", "")
-            for item in title
-            if isinstance(item, dict)
-        )
+    for db in result["results"]:
+        title = ""
 
-        print("=" * 60)
-        print("Atlas Notion API Test")
-        print(f"Status: SUCCESS")
-        print(f"Data Source ID: {result.get('id')}")
-        print(f"Title: {title_text or 'Unknown'}")
-        print(f"Properties found: {len(result.get('properties', {}))}")
-        print("=" * 60)
+        if db["title"]:
+            title = "".join(
+                t["plain_text"]
+                for t in db["title"]
+            )
 
-    except urllib.error.HTTPError as error:
-        body = error.read().decode("utf-8", errors="replace")
-        print(f"Notion HTTP error: {error.code}")
-        print(body)
-        sys.exit(1)
+        print(title)
+        print(db["id"])
+        print("-" * 40)
 
-    except Exception as error:
-        print(f"Notion test failed: {type(error).__name__}: {error}")
-        sys.exit(1)
+    print("=" * 60)
 
-
-if __name__ == "__main__":
-    main()
+except Exception as e:
+    print(e)
+    sys.exit(1)
