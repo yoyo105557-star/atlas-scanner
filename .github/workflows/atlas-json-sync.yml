@@ -13,55 +13,49 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Validate and send JSON
+      - name: Validate JSON
         env:
-          ATLAS_WORKER_URL: ${{ secrets.ATLAS_WORKER_URL }}
-          ATLAS_API_KEY: ${{ secrets.ATLAS_API_KEY }}
           ATLAS_PAYLOAD: ${{ inputs.payload }}
         run: |
           python - <<'PY'
           import json
           import os
-          import urllib.error
-          import urllib.request
 
-          worker_url = os.environ.get("ATLAS_WORKER_URL")
-          api_key = os.environ.get("ATLAS_API_KEY")
-          raw_payload = os.environ.get("ATLAS_PAYLOAD")
+          raw = os.environ.get("ATLAS_PAYLOAD", "")
 
-          if not worker_url:
-              raise RuntimeError("Missing ATLAS_WORKER_URL")
-
-          if not api_key:
-              raise RuntimeError("Missing ATLAS_API_KEY")
-
-          if not raw_payload:
+          if not raw:
               raise RuntimeError("Missing JSON payload")
 
           try:
-              payload = json.loads(raw_payload)
+              payload = json.loads(raw)
           except json.JSONDecodeError as error:
               raise RuntimeError(f"Invalid JSON: {error}") from error
 
-          body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+          with open("atlas_payload.json", "w", encoding="utf-8") as file:
+              json.dump(payload, file, ensure_ascii=False)
 
-          request = urllib.request.Request(
-              worker_url,
-              data=body,
-              headers={
-                  "Content-Type": "application/json",
-                  "x-atlas-key": api_key,
-              },
-              method="POST",
-          )
-
-          try:
-              with urllib.request.urlopen(request, timeout=30) as response:
-                  result = response.read().decode("utf-8")
-                  print(result)
-
-          except urllib.error.HTTPError as error:
-              result = error.read().decode("utf-8", errors="replace")
-              print(result)
-              raise
+          print("JSON validation passed")
+          print(json.dumps(payload, ensure_ascii=False, indent=2))
           PY
+
+      - name: Send JSON to Atlas Worker
+        env:
+          ATLAS_WORKER_URL: ${{ secrets.ATLAS_WORKER_URL }}
+          ATLAS_API_KEY: ${{ secrets.ATLAS_API_KEY }}
+        run: |
+          if [ -z "$ATLAS_WORKER_URL" ]; then
+            echo "Missing ATLAS_WORKER_URL"
+            exit 1
+          fi
+
+          if [ -z "$ATLAS_API_KEY" ]; then
+            echo "Missing ATLAS_API_KEY"
+            exit 1
+          fi
+
+          curl --fail-with-body \
+            --request POST \
+            --url "$ATLAS_WORKER_URL" \
+            --header "Content-Type: application/json" \
+            --header "x-atlas-key: $ATLAS_API_KEY" \
+            --data-binary "@atlas_payload.json"
