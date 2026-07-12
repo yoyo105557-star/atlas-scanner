@@ -16,7 +16,7 @@ def main() -> None:
     if not DATA_SOURCE_ID:
         raise RuntimeError("Missing NOTION_DATA_SOURCE_ID")
 
-    url = f"https://api.notion.com/v1/data_sources/{DATA_SOURCE_ID}"
+    url = f"https://api.notion.com/v1/databases/{DATA_SOURCE_ID}"
 
     request = urllib.request.Request(
         url,
